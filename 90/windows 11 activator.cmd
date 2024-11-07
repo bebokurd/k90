@@ -319,7 +319,7 @@ echo:
 echo:
 echo:
 echo:
-echo:       ___________________________CHYA LUQMAN___________________________________
+echo:       ________________________CHYA LUQMAN______________________________________
 echo:
 echo:                 Activation Methods:
 echo:
