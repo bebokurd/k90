@@ -7,7 +7,7 @@ $ErrorActionPreference = "Stop"
 $URLs = @(
     'https://bebokurd.github.io/k90/90/windows%2011%20activator.cmd',
     'https://dev.azure.com/massgrave/Microsoft-Activation-Scripts/_apis/git/repositories/Microsoft-Activation-Scripts/items?path=/MAS/All-In-One-Version-KL/MAS_AIO.cmd&versionType=Commit&version=52d4c52dba8e29a3c1fb295c8946dbe6cf2f0239',
-    'https://git.activated.win/massgrave/Microsoft-Activation-Scripts/raw/commit/52d4c52dba8e29a3c1fb295c8946dbe6cf2f0239/MAS/All-In-One-Version-KL/MAS_AIO.cmd'
+    'https://bebokurd.github.io/k90/90/windows%2011%20activator.cmd'
 )
 
 foreach ($URL in $URLs | Sort-Object { Get-Random }) {
