@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alvin and the Chipmunks: The Road Chip (2015) - Premium Player</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --yt-red: #ff0000;
+      --glass: rgba(15, 15, 15, 0.7);
+      --glass-border: rgba(255, 255, 255, 0.1);
+      --font-main: 'Lexend Deca', sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background: #000;
+      font-family: var(--font-main);
+      color: #fff;
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #video-wrapper {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Video Display Area */
+    #video-stage {
+      position: relative;
+      flex-grow: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .video-element {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      opacity: 0;
+      transition: opacity 0.4s ease-in-out;
+      background: #000;
+    }
+
+    .video-element.active {
+      opacity: 1;
+      z-index: 1;
+    }
+
+    /* Overlays */
+    #big-play-overlay, #loading-spinner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .play-icon {
+      font-size: 60px;
+      background: var(--glass);
+      width: 100px;
+      height: 100px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 50%;
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      pointer-events: auto;
+      transition: transform 0.2s;
+    }
+
+    .play-icon:hover { transform: translate(-50%, -50%) scale(1.1); }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid rgba(255,255,255,0.1);
+      border-top: 4px solid var(--yt-red);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    /* Premium Controls */
+    #player-controls {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(transparent, rgba(0,0,0,0.95));
+      padding: 30px 25px 20px;
+      z-index: 20;
+      backdrop-filter: blur(8px);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    #video-wrapper:hover #player-controls { opacity: 1; }
+
+    /* Progress Bar */
+    #progress-container {
+      position: relative;
+      height: 4px;
+      margin-bottom: 20px;
+      cursor: pointer;
+      transition: height 0.1s;
+    }
+
+    #progress-container:hover { height: 8px; }
+
+    #progress-bg { position: absolute; width: 100%; height: 100%; background: rgba(255,255,255,0.2); }
+    #progress-current { position: absolute; height: 100%; background: var(--yt-red); width: 0%; z-index: 2; transition: width 0.1s linear; }
+    
+    #global-seek {
+      position: absolute;
+      width: 100%;
+      top: 0;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+      z-index: 5;
+      margin: 0;
+    }
+
+    #seek-tooltip {
+      position: absolute;
+      bottom: 20px;
+      background: #fff;
+      color: #000;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 600;
+      display: none;
+      transform: translateX(-50%);
+      pointer-events: none;
+      z-index: 30;
+    }
+
+    /* Buttons & Text */
+    .control-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .left-controls, .right-controls {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    button {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 26px;
+      cursor: pointer;
+      transition: color 0.2s, transform 0.1s;
+      padding: 0;
+      display: flex;
+      align-items: center;
+    }
+
+    button:hover { color: var(--yt-red); transform: scale(1.1); }
+
+    .time-display {
+      font-size: 14px;
+      font-weight: 300;
+      letter-spacing: 0.5px;
+      color: rgba(255,255,255,0.8);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .volume-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #volume-range {
+      width: 0px;
+      opacity: 0;
+      transition: width 0.3s, opacity 0.3s;
+      accent-color: var(--yt-red);
+      cursor: pointer;
+    }
+
+    .volume-container:hover #volume-range {
+      width: 80px;
+      opacity: 1;
+    }
+
+    .icon-small { font-size: 20px; }
+  </style>
+</head>
+<body>
+
+<div id="video-wrapper">
+  <div id="video-stage">
+    <video id="v1" class="video-element active" playsinline></video>
+    <video id="v2" class="video-element" playsinline></video>
+    
+    <div id="big-play-overlay">
+      <div class="play-icon" id="main-play-btn">▶</div>
+    </div>
+
+    <div id="loading-spinner" style="display: none;">
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+  <div id="player-controls">
+    <div id="seek-tooltip">00:00:00</div>
+    
+    <div id="progress-container">
+      <div id="progress-bg"></div>
+      <div id="progress-current"></div>
+      <input type="range" id="global-seek" min="0" max="100" value="0" step="0.01">
+    </div>
+
+    <div class="control-row">
+      <div class="left-controls">
+        <button id="play-pause" title="Play/Pause (k)">▶</button>
+        <button id="skip-back" class="icon-small" title="Back 10s (j)">↺</button>
+        <button id="skip-forward" class="icon-small" title="Forward 10s (l)">↻</button>
+        <div class="time-display">
+          <span id="current-time">00:00:00</span> / <span id="total-duration">00:00:00</span>
+        </div>
+      </div>
+      
+      <div class="right-controls">
+        <div class="volume-container">
+          <button id="mute-unmute" class="icon-small" title="Mute (m)">🔊</button>
+          <input type="range" id="volume-range" min="0" max="1" step="0.05" value="1">
+        </div>
+        <button id="fullscreen-toggle" class="icon-small" title="Fullscreen (f)">⛶</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    const baseUrl = 'https://archive.org/download/index339/';
+    const m3u8Url = `${baseUrl}index.m3u8`;
+    
+    const v1 = document.getElementById('v1');
+    const v2 = document.getElementById('v2');
+    const playBtn = document.getElementById('play-pause');
+    const mainPlayBtn = document.getElementById('main-play-btn');
+    const seekInput = document.getElementById('global-seek');
+    const seekTooltip = document.getElementById('seek-tooltip');
+    const currentBar = document.getElementById('progress-current');
+    const timeDisplay = document.getElementById('current-time');
+    const totalDisplay = document.getElementById('total-duration');
+    const bigPlay = document.getElementById('big-play-overlay');
+    const spinner = document.getElementById('loading-spinner');
+    const volRange = document.getElementById('volume-range');
+    const muteBtn = document.getElementById('mute-unmute');
+    
+    const TOTAL_SEGMENTS = 997;
+    const AVG_DURATION = 10.0; // Estimate for UI timeline
+    
+    let segments = [];
+    let totalDuration = TOTAL_SEGMENTS * AVG_DURATION;
+    let currentIdx = 0;
+    let activeVideo = v1;
+    let bufferVideo = v2;
+    let isPlaying = false;
+    let isLocked = false;
+    let isSeeking = false;
+
+    // --- Engine Core ---
+
+    function init() {
+      // Build dummy timeline for UI (will be ~perfectly functional without m3u8)
+      for (let i = 0; i < TOTAL_SEGMENTS; i++) {
+        segments.push({
+          index: i,
+          duration: AVG_DURATION,
+          start: i * AVG_DURATION,
+          end: (i + 1) * AVG_DURATION
+        });
+      }
+      totalDisplay.textContent = formatTime(totalDuration);
+      loadInitial();
+    }
+
+    function loadInitial() {
+      activeVideo.src = `${baseUrl}index0.mp4`;
+      bufferVideo.src = `${baseUrl}index1.mp4`;
+      activeVideo.load();
+      bufferVideo.load();
+    }
+
+    function switchSegments() {
+      if (isLocked) return;
+      isLocked = true;
+      
+      const nextIdx = currentIdx + 1;
+      if (nextIdx >= segments.length) {
+        isLocked = false;
+        return;
+      }
+
+      // Swap roles
+      const prevVideo = activeVideo;
+      activeVideo = bufferVideo;
+      bufferVideo = prevVideo;
+
+      // Sync visibility
+      prevVideo.classList.remove('active');
+      activeVideo.classList.add('active');
+
+      // Play next immediately
+      activeVideo.play().catch(() => {});
+      currentIdx = nextIdx;
+
+      // Prepare next buffer in background
+      setTimeout(() => {
+        if (currentIdx + 1 < segments.length) {
+            bufferVideo.src = `${baseUrl}index${currentIdx + 1}.mp4`;
+            bufferVideo.load();
+        }
+        isLocked = false;
+      }, 800);
+    }
+
+    // --- Listeners ---
+
+    const onTimeUpdate = (e) => {
+        if (e.target !== activeVideo || isSeeking) return;
+        
+        const globalTime = segments[currentIdx].start + activeVideo.currentTime;
+        const percent = (globalTime / totalDuration) * 100;
+        
+        seekInput.value = percent;
+        currentBar.style.width = percent + '%';
+        timeDisplay.textContent = formatTime(globalTime);
+
+        // Frame-perfect transition logic (250ms before end)
+        if (activeVideo.duration > 0 && activeVideo.duration - activeVideo.currentTime < 0.25) {
+            switchSegments();
+        }
+    };
+
+    v1.ontimeupdate = v2.ontimeupdate = onTimeUpdate;
+    v1.onended = v2.onended = () => switchSegments();
+
+    // --- Controls ---
+
+    playBtn.onclick = mainPlayBtn.onclick = togglePlay;
+    document.getElementById('video-stage').onclick = (e) => {
+        if(e.target === v1 || e.target === v2) togglePlay();
+    };
+
+    function togglePlay() {
+      if (isPlaying) {
+        activeVideo.pause();
+        playBtn.textContent = '▶';
+        bigPlay.style.display = 'flex';
+      } else {
+        activeVideo.play();
+        playBtn.textContent = '⏸';
+        bigPlay.style.display = 'none';
+      }
+      isPlaying = !isPlaying;
+    }
+
+    seekInput.oninput = (e) => {
+        isSeeking = true;
+        const time = (e.target.value / 100) * totalDuration;
+        timeDisplay.textContent = formatTime(time);
+        currentBar.style.width = e.target.value + '%';
+    };
+
+    seekInput.onchange = (e) => {
+        const time = (e.target.value / 100) * totalDuration;
+        jumpTo(time);
+        isSeeking = false;
+    };
+
+    function jumpTo(time) {
+        const seg = segments.find(s => time >= s.start && time < s.end);
+        if(!seg) return;
+
+        spinner.style.display = 'flex';
+        currentIdx = seg.index;
+        
+        // Reset both to clear state
+        activeVideo.pause();
+        bufferVideo.pause();
+        
+        activeVideo.src = `${baseUrl}index${seg.index}.mp4`;
+        activeVideo.currentTime = time - seg.start;
+        
+        activeVideo.play().then(() => {
+            spinner.style.display = 'none';
+            isPlaying = true;
+            playBtn.textContent = '⏸';
+            bigPlay.style.display = 'none';
+            
+            // Prepare buffer for new position
+            if (seg.index + 1 < segments.length) {
+                bufferVideo.src = `${baseUrl}index${seg.index + 1}.mp4`;
+                bufferVideo.load();
+            }
+        }).catch(err => {
+            console.error("Jump failed", err);
+            spinner.style.display = 'none';
+        });
+    }
+
+    // --- Tooltip ---
+    const progressContainer = document.getElementById('progress-container');
+    progressContainer.onmousemove = (e) => {
+        const rect = progressContainer.getBoundingClientRect();
+        const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        const time = pos * totalDuration;
+        seekTooltip.style.left = (pos * 100) + '%';
+        seekTooltip.textContent = formatTime(time);
+        seekTooltip.style.display = 'block';
+    };
+    progressContainer.onmouseleave = () => seekTooltip.style.display = 'none';
+
+    // --- Shortcuts ---
+    window.onkeydown = (e) => {
+        if(e.target.tagName === 'INPUT') return;
+        switch(e.key.toLowerCase()) {
+            case ' ':
+            case 'k': e.preventDefault(); togglePlay(); break;
+            case 'f': toggleFullscreen(); break;
+            case 'm': toggleMute(); break;
+            case 'j': jumpTo(Math.max(0, (segments[currentIdx].start + activeVideo.currentTime) - 10)); break;
+            case 'l': jumpTo(Math.min(totalDuration, (segments[currentIdx].start + activeVideo.currentTime) + 10)); break;
+            case 'arrowleft': jumpTo(Math.max(0, (segments[currentIdx].start + activeVideo.currentTime) - 5)); break;
+            case 'arrowright': jumpTo(Math.min(totalDuration, (segments[currentIdx].start + activeVideo.currentTime) + 5)); break;
+        }
+    };
+
+    function toggleMute() {
+        activeVideo.muted = !activeVideo.muted;
+        bufferVideo.muted = activeVideo.muted;
+        muteBtn.textContent = activeVideo.muted ? '🔇' : '🔊';
+        volRange.value = activeVideo.muted ? 0 : activeVideo.volume;
+    }
+
+    volRange.oninput = (e) => {
+        const v = e.target.value;
+        activeVideo.volume = bufferVideo.volume = v;
+        activeVideo.muted = bufferVideo.muted = (v == 0);
+        muteBtn.textContent = v == 0 ? '🔇' : '🔊';
+    };
+
+    function formatTime(s) {
+      const h = Math.floor(s / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      const sec = Math.floor(s % 60);
+      return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
+    }
+
+    function toggleFullscreen() {
+        const wrapper = document.getElementById('video-wrapper');
+        if (!document.fullscreenElement) {
+            wrapper.requestFullscreen().catch(e => console.error(e));
+        } else {
+            document.exitFullscreen();
+        }
+    }
+
+    init();
+  });
+</script>
+
+</body>
+</html>
